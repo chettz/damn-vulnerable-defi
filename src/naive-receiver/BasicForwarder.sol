@@ -17,7 +17,7 @@ contract BasicForwarder is EIP712 {
         uint256 value;
         uint256 gas;
         uint256 nonce;
-        bytes data;
+        bytes data; 
         uint256 deadline;
     }
 
@@ -48,6 +48,21 @@ contract BasicForwarder is EIP712 {
 
         if (IHasTrustedForwarder(request.target).trustedForwarder() != address(this)) revert InvalidTarget();
 
+        // signature를 통해서 from 주소 검증
+        // _hashTypedData()는 어떤 함수?
+        // =>
+        // 도메인 정보까지 묶은 실제로 서명하는 최종 digest를 계산하는 함수
+        /*
+            digest = _hashTypedData(getDataHash(request))   // 32 bytes
+
+            오프체인 (지갑):
+            (r, s, v) = sign(digest, userPrivateKey)
+            signature = r (32) ‖ s (32) ‖ v (1)   // 총 65 bytes
+
+            온체인 (forwarder):
+            signer = ECDSA.recover(digest, signature)
+        */
+        // ECDSA.recover()는 서명에 대응하는 EOA 주소 반환
         address signer = ECDSA.recover(_hashTypedData(getDataHash(request)), signature);
         if (signer != request.from) revert InvalidSigner();
     }
@@ -60,8 +75,11 @@ contract BasicForwarder is EIP712 {
         uint256 gasLeft;
         uint256 value = request.value; // in wei
         address target = request.target;
+        // payload[0:32] = length
+        // payload[32: ] = data + from
         bytes memory payload = abi.encodePacked(request.data, request.from);
         uint256 forwardGas = request.gas;
+        // target의 함수 호출
         assembly {
             success := call(forwardGas, target, value, add(payload, 0x20), mload(payload), 0, 0) // don't copy returndata
             gasLeft := gas()
@@ -80,6 +98,7 @@ contract BasicForwarder is EIP712 {
     }
 
     function getDataHash(Request memory request) public pure returns (bytes32) {
+        // _REQUEST_TYPEHASH와 실제 값을 규칙대로
         return keccak256(
             abi.encode(
                 _REQUEST_TYPEHASH,

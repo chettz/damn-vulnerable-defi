@@ -82,6 +82,14 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
         if (amount == 0) revert InvalidAmount(0); // fail early
         if (address(asset) != _token) revert UnsupportedCurrency(); // enforce ERC3156 requirement
         uint256 balanceBefore = totalAssets();
+        // balanceBefore는 asset의 잔액인데 왜 convertToShares(totalSupply)와 비교하는지?
+        // convertToAssets(totalSupply) != balanceBefore가 적절한 비교가 아닌가?
+        // 위 가정이 맞다고 했을때 두 개의 값을 비교하는 이유는?
+        // => 검사하려는 불변식은 발행된 shares 전체가 나타내는 asset 가치가 현재 asset 잔액과 일치하는지를 본다. 
+        // 아래와 같이 코드를 작성했을 때 나타날 수 있는 문제점은?
+        // 현재 금고 상태는 totalSupply가 100만, totalAssets이 100만이므로 최초 flashloan을 요청했을때
+        // convertToShares(totalSupply)는 100만이고 balanceBefore도 100만이므로 문제가 없다.
+        // 결론적으로 asset을 강제로 기부할 경우 아래 식이 성립하지 않아 revert 된다.
         if (convertToShares(totalSupply) != balanceBefore) revert InvalidBalance(); // enforce ERC4626 requirement
 
         // transfer tokens out + execute callback on receiver
