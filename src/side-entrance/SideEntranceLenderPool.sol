@@ -35,8 +35,10 @@ contract SideEntranceLenderPool {
     function flashLoan(uint256 amount) external {
         uint256 balanceBefore = address(this).balance;
 
+        // 호출자의 execute 함수 호출과 동시에 amount를 전송
         IFlashLoanEtherReceiver(msg.sender).execute{value: amount}();
 
+        // 호출자 개인의 잔고를 체크하는 것이 아닌 컨트랙트 잔고를 체크
         if (address(this).balance < balanceBefore) {
             revert RepayFailed();
         }
