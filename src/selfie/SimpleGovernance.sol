@@ -56,6 +56,7 @@ contract SimpleGovernance is ISimpleGovernance {
         }
 
         GovernanceAction storage actionToExecute = _actions[actionId];
+        // 실행 시간 현재 시간으로 업데이트
         actionToExecute.executedAt = uint64(block.timestamp);
 
         emit ActionExecuted(actionId, msg.sender);
@@ -87,13 +88,14 @@ contract SimpleGovernance is ISimpleGovernance {
     function _canBeExecuted(uint256 actionId) private view returns (bool) {
         GovernanceAction memory actionToExecute = _actions[actionId];
 
+        // actionId가 queue되었는지 검사
         if (actionToExecute.proposedAt == 0) return false;
 
         uint64 timeDelta;
         unchecked {
             timeDelta = uint64(block.timestamp) - actionToExecute.proposedAt;
         }
-
+        // 실행된 적이 없고, 제안 후 2일이 지났는지 체크 후 반환
         return actionToExecute.executedAt == 0 && timeDelta >= ACTION_DELAY_IN_SECONDS;
     }
 

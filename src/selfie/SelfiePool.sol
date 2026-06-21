@@ -69,6 +69,7 @@ contract SelfiePool is IERC3156FlashLender, ReentrancyGuard {
     }
 
     function emergencyExit(address receiver) external onlyGovernance {
+        // pool에 있는 토큰 전체를 receiver로 이동
         uint256 amount = token.balanceOf(address(this));
         token.transfer(receiver, amount);
 
