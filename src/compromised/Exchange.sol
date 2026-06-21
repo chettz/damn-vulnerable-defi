@@ -63,7 +63,8 @@ contract Exchange is ReentrancyGuard {
 
         token.transferFrom(msg.sender, address(this), id);
         token.burn(id);
-
+        // 내부적으로 call 호출을 통해 이더를 보내고 실패 시 revert 처리까지 함
+        // call은 성공 여부를 돌려주기는 하지만, 직접 확인하지 않으면 ETH 전송이 실패했는데도 나머지 코드가 그대로 실행됨
         payable(msg.sender).sendValue(price);
 
         emit TokenSold(msg.sender, id, price);
