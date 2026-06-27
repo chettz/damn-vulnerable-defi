@@ -112,11 +112,9 @@ contract CompromisedChallenge is Test {
         exchange.sellOne(id);
         (bool success, ) = recovery.call{value: EXCHANGE_INITIAL_ETH_BALANCE}("");
         assertEq(success, true, "Transfer failed");
-
-         console.log("nft.balanceOf(player)", nft.balanceOf(player));
         vm.stopPrank();
 
-       
+        console.log("nft.balanceOf(player)", nft.balanceOf(player));
 
     }
 

