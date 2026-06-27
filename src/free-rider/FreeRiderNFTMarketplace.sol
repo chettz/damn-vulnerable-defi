@@ -9,8 +9,8 @@ import {DamnValuableNFT} from "../DamnValuableNFT.sol";
 contract FreeRiderNFTMarketplace is ReentrancyGuard {
     using Address for address payable;
 
-    DamnValuableNFT public token;
-    uint256 public offersCount;
+    DamnValuableNFT public token; // 0x01
+    uint256 public offersCount; // 0x02
 
     // tokenId -> price
     mapping(uint256 => uint256) private offers;
@@ -28,8 +28,10 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
 
     constructor(uint256 amount) payable {
         DamnValuableNFT _token = new DamnValuableNFT();
+        // 소유권 포기 => 컬렉션 운영 권한 포기
         _token.renounceOwnership();
         for (uint256 i = 0; i < amount;) {
+            // mint 주체가 각 NFT를 소유하게 됨
             _token.safeMint(msg.sender);
             unchecked {
                 ++i;
@@ -74,6 +76,7 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
 
         assembly {
             // gas savings
+            // 0x02(offersCount)에 1을 더함
             sstore(0x02, add(sload(0x02), 0x01))
         }
 
@@ -93,11 +96,14 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
         if (priceToPay == 0) {
             revert TokenNotOffered(tokenId);
         }
-
+        // NFT 구매시 지불한 이더가 NFT가격보다 작으면 에러
+        // buyMany에서 NFT를 여러 개 구매하는 경우에도 NFT 1개 가격만 지불함으로써
+        // 이 조건만 만족하면 구매 가능
         if (msg.value < priceToPay) {
             revert InsufficientPayment();
         }
-
+        
+        // 쓰지도 않는데 왜 있는건지?
         --offersCount;
 
         // transfer from seller to buyer
@@ -105,6 +111,9 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
         _token.safeTransferFrom(_token.ownerOf(tokenId), msg.sender, tokenId);
 
         // pay seller using cached token
+        // NFT 소유자에게 priceToPay만큼의 이더를 전송
+        // 그러나 이미 NFT의 소유가 seller에서 buyer로 이동했기 때문에
+        // 결국엔 buyer에게 이더가 전송됨
         payable(_token.ownerOf(tokenId)).sendValue(priceToPay);
 
         emit NFTBought(msg.sender, tokenId, priceToPay);
