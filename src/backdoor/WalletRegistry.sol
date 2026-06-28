@@ -64,6 +64,7 @@ contract WalletRegistry is IProxyCreationCallback, Ownable {
      * @notice Function executed when user creates a Safe wallet via SafeProxyFactory::createProxyWithCallback
      *          setting the registry's address as the callback.
      */
+    // 
     function proxyCreated(SafeProxy proxy, address singleton, bytes calldata initializer, uint256) external override {
         if (token.balanceOf(address(this)) < PAYMENT_AMOUNT) {
             // fail early
@@ -88,11 +89,13 @@ contract WalletRegistry is IProxyCreationCallback, Ownable {
 
         // Ensure wallet initialization is the expected
         uint256 threshold = Safe(walletAddress).getThreshold();
+        // theshold값 1로 강제
         if (threshold != EXPECTED_THRESHOLD) {
             revert InvalidThreshold(threshold);
         }
 
         address[] memory owners = Safe(walletAddress).getOwners();
+        // safe 지갑의 owners 값 1로 강제
         if (owners.length != EXPECTED_OWNERS_COUNT) {
             revert InvalidOwnersCount(owners.length);
         }
@@ -112,6 +115,7 @@ contract WalletRegistry is IProxyCreationCallback, Ownable {
         }
 
         // Remove owner as beneficiary
+        // 등록된 사용자를 레지스트리 beneficiaries에서 제거
         beneficiaries[walletOwner] = false;
 
         // Register the wallet under the owner's address
