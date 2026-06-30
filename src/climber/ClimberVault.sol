@@ -28,6 +28,8 @@ contract ClimberVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
+        // 구현체 주소로 직접 초기화하는 것을 방지
+        // 만약 구현체 주소로 직접 초기화하는 것이 가능하다면 호출자가 owner가 되어 이후 악용의 여지가 생길 수 있음
         _disableInitializers();
     }
 
@@ -80,5 +82,6 @@ contract ClimberVault is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     // By marking this internal function with `onlyOwner`, we only allow the owner account to authorize an upgrade
+    // owner만 업그레이드 권한을 가질 수 있도록 함 => ClimberTimelock만 구현체 업그레이드 가능
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

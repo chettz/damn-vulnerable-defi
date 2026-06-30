@@ -7,6 +7,7 @@ import {ClimberVault} from "../../src/climber/ClimberVault.sol";
 import {ClimberTimelock, CallerNotTimelock, PROPOSER_ROLE, ADMIN_ROLE} from "../../src/climber/ClimberTimelock.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
+import {Attack} from "./Attack.sol";
 
 contract ClimberChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -39,10 +40,12 @@ contract ClimberChallenge is Test {
 
         // Deploy the vault behind a proxy,
         // passing the necessary addresses for the `ClimberVault::initialize(address,address,address)` function
+        // 호출을 편하게 하기위한 캐스팅
         vault = ClimberVault(
             address(
                 new ERC1967Proxy(
                     address(new ClimberVault()), // implementation
+                    // 프록시 컨텍스트에서 호출하는 것
                     abi.encodeCall(ClimberVault.initialize, (deployer, proposer, sweeper)) // initialization data
                 )
             )
@@ -85,6 +88,8 @@ contract ClimberChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_climber() public checkSolvedByPlayer {
+        Attack attack = new Attack(address(timelock), address(vault), address(token), recovery);
+        attack.attack();
         
     }
 

@@ -28,6 +28,8 @@ contract ClimberTimelock is ClimberTimelockBase {
      * @param proposer address of the account that will hold the PROPOSER_ROLE role
      */
     constructor(address admin, address proposer) {
+        // ADMIN_ROLE의 관리자는 ADMIN_ROLE
+        // PROPOSER_ROLE의 관리자는 ADMIN_ROLE
         _setRoleAdmin(ADMIN_ROLE, ADMIN_ROLE);
         _setRoleAdmin(PROPOSER_ROLE, ADMIN_ROLE);
 
@@ -87,10 +89,13 @@ contract ClimberTimelock is ClimberTimelockBase {
 
         bytes32 id = getOperationId(targets, values, dataElements, salt);
 
+        // schedule된 작업을 실행
         for (uint8 i = 0; i < targets.length; ++i) {
             targets[i].functionCallWithValue(dataElements[i], values[i]);
         }
 
+        // schedule된 이후로 delay만큼 지났는지 검사
+        // 먼저 delay만큼 지났는지 검사 후에 schedule된 작업을 실행해야 하는게 아닌가?
         if (getOperationState(id) != OperationState.ReadyForExecution) {
             revert NotReadyForExecution(id);
         }
