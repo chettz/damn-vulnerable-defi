@@ -59,7 +59,10 @@ contract PuppetV3Pool {
     }
 
     function _getOracleQuote(uint128 amount) private view returns (uint256) {
+        // "10분전 ~ 지금" 구간의 시간 가중 평균 tick을 구하는 과정
         (int24 arithmeticMeanTick,) = OracleLibrary.consult({pool: address(uniswapV3Pool), secondsAgo: TWAP_PERIOD});
+        // 평균 tick을 실제 토큰 가격으로 환산
+        // DVT amount개를 빌리기 위해서는 WETH가 얼마나 필요한지 계산
         return OracleLibrary.getQuoteAtTick({
             tick: arithmeticMeanTick,
             baseAmount: amount,

