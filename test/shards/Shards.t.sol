@@ -11,6 +11,7 @@ import {
     DamnValuableNFT
 } from "../../src/shards/ShardsNFTMarketplace.sol";
 import {DamnValuableStaking} from "../../src/DamnValuableStaking.sol";
+import {Attack} from "./Attack.sol";
 
 contract ShardsChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -24,7 +25,7 @@ contract ShardsChallenge is Test {
     uint256 constant SELLER_NFT_BALANCE = 1;
     uint256 constant SELLER_DVT_BALANCE = 75e19;
     uint256 constant STAKING_RATE = 1e18;
-    uint256 constant MARKETPLACE_INITIAL_RATE = 75e15;
+    uint256 constant MARKETPLACE_INITIAL_RATE = 75e15; // 1USDC = 0.075DVT
     uint112 constant NFT_OFFER_PRICE = 1_000_000e6;
     uint112 constant NFT_OFFER_SHARDS = 10_000_000e18;
 
@@ -80,6 +81,8 @@ contract ShardsChallenge is Test {
         token.approve(address(marketplace), SELLER_DVT_BALANCE); // for fees
         nft.setApprovalForAll(address(marketplace), true);
         for (uint256 id = 0; id < SELLER_NFT_BALANCE; id++) {
+            // shard 1개당 0.1 USDC
+            // 백만 USDC -> 75,000DVT
             marketplace.openOffer({nftId: id, totalShards: NFT_OFFER_SHARDS, price: NFT_OFFER_PRICE});
         }
 
@@ -114,7 +117,10 @@ contract ShardsChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_shards() public checkSolvedByPlayer {
-        
+        Attack attack = new Attack(address(marketplace), address(token), recovery);
+        attack.fillAndCancel();
+
+        console.log("token balance of recovery: ", token.balanceOf(recovery));
     }
 
     /**
@@ -126,6 +132,7 @@ contract ShardsChallenge is Test {
 
         // Marketplace has less tokens
         uint256 missingTokens = initialTokensInMarketplace - token.balanceOf(address(marketplace));
+        // 훔친 자금이 기존 자금의 0.01% 이상이어야 한다.
         assertGt(missingTokens, initialTokensInMarketplace * 1e16 / 100e18, "Marketplace still has tokens");
 
         // All recovered funds sent to recovery account

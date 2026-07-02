@@ -25,6 +25,8 @@ contract ShardsNFTMarketplace is IShardsNFTMarketplace, IERC721Receiver, ERC1155
     /// @notice for how long can buyers cancel
     uint32 public constant CANCEL_PERIOD_LENGTH = 2 days;
 
+    // 구매를 취소하려면 최소 1일 대기해야하고, 2일 동안 취소 가능하다. => 구매 후 1-3일 사이에 취소 가능
+
     DamnValuableNFT public immutable nft;
     DamnValuableToken public immutable paymentToken;
     ShardsFeeVault public immutable feeVault;
@@ -120,6 +122,7 @@ contract ShardsNFTMarketplace is IShardsNFTMarketplace, IERC721Receiver, ERC1155
         if (want > offer.stock) revert OutOfStock();
         if (!offer.isOpen) revert NotOpened(offerId);
 
+        // want만큼 shard 개수 차감
         offer.stock -= want;
         purchaseIndex = purchases[offerId].length;
         uint256 _currentRate = rate;
@@ -132,6 +135,7 @@ contract ShardsNFTMarketplace is IShardsNFTMarketplace, IERC721Receiver, ERC1155
                 cancelled: false
             })
         );
+        // shard 1개당 0.0075DVT 지불
         paymentToken.transferFrom(
             msg.sender, address(this), want.mulDivDown(_toDVT(offer.price, _currentRate), offer.totalShards)
         );
@@ -149,6 +153,8 @@ contract ShardsNFTMarketplace is IShardsNFTMarketplace, IERC721Receiver, ERC1155
         if (msg.sender != buyer) revert NotAllowed();
         if (!offer.isOpen) revert NotOpened(offerId);
         if (purchase.cancelled) revert AlreadyCancelled();
+        // 구매 후 2일이 지났거나, 구매 후 1일이 지났으면 취소 불가
+        // 즉 구매 후 1일 이내에 취소 가능 => 구매 직후 취소 가능
         if (
             purchase.timestamp + CANCEL_PERIOD_LENGTH < block.timestamp
                 || block.timestamp > purchase.timestamp + TIME_BEFORE_CANCEL
@@ -197,6 +203,7 @@ contract ShardsNFTMarketplace is IShardsNFTMarketplace, IERC721Receiver, ERC1155
         assert(feesInBalance <= paymentToken.balanceOf(address(this))); // invariant
     }
 
+    // shard 완판 시 판매자에게 대금 지불 및 구매자에게 shard 발급
     function _closeOffer(uint64 offerId) private {
         Offer memory offer = offers[offerId];
         Purchase[] memory _purchases = purchases[offerId];
